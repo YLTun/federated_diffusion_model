@@ -23,11 +23,11 @@ def weighted_averaging(w_list, num_sample_list):
     return w_avg
 
 
-def local_update_fedavg(glob_model, client_loader, test_loader, num_local_epochs, optim_args):
+def local_update_fedavg(glob_model, client_loader, num_local_epochs, optim_args, test_loader=None):
 
     local_model = copy.deepcopy(glob_model)
     local_model.train()
-    device =local_model.device
+    device = local_model.device
     optimizer = torch.optim.Adam(local_model.parameters(), **optim_args)
     grad_scaler = torch.cuda.amp.GradScaler()
     
@@ -46,14 +46,16 @@ def local_update_fedavg(glob_model, client_loader, test_loader, num_local_epochs
     
     # Evaluating.
     train_loss = evaluate_model(local_model, client_loader, diffusion_loss, tqdm_desc='local_train_loss')
-    test_loss = evaluate_model(local_model, test_loader, diffusion_loss, tqdm_desc='local_test_loss')
-
+    
     # Return update.
     local_update_dict ={
         'local_w': local_model.state_dict(),
         'num_samples': len(client_loader.dataset),
         'train_loss': train_loss,
-        'test_loss': test_loss,
     }
+    
+    if test_loader:
+        test_loss = evaluate_model(local_model, test_loader, diffusion_loss, tqdm_desc='local_test_loss')
+        local_update_dict['test_loss'] = test_loss
     
     return local_update_dict
